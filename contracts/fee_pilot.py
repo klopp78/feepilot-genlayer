@@ -43,6 +43,22 @@ class FeePilot(gl.Contract):
         return self.latest_budget_id
 
     @gl.public.view
+    def preview_budget_id(
+        self,
+        owner: str,
+        executor: str,
+        action_scope: str,
+        action_payload_hash: str,
+        policy_url: str,
+        expires_at: u64,
+        reserved_gen_wei: u256,
+        creation_nonce: str,
+    ) -> str:
+        """Return the exact caller-bound ID before a create transaction is sent."""
+        action = _canonical_action(owner, executor, action_scope, action_payload_hash, policy_url)
+        return _budget_id(action, int(reserved_gen_wei), int(expires_at), _digest(creation_nonce, "invalid_creation_nonce"))
+
+    @gl.public.view
     def list_budget_ids(self, offset: u64, limit: u64) -> str:
         start, count = int(offset), int(limit)
         if start < 0 or count < 1 or count > 50:
@@ -57,6 +73,7 @@ class FeePilot(gl.Contract):
         action_payload_hash: str,
         policy_url: str,
         expires_at: u64,
+        creation_nonce: str,
     ) -> str:
         if gl.message.value == u256(0):
             raise Exception("positive_gen_reserve_required")
@@ -69,18 +86,14 @@ class FeePilot(gl.Contract):
         policy = _https_url(policy_url, "invalid_policy_url")
         owner = str(gl.message.sender_address).lower()
         executor_address = str(Address(executor)).lower()
-        action = {
-            "action_payload_hash": payload_hash,
-            "action_scope": scope,
-            "executor": executor_address,
-            "owner": owner,
-            "policy_url": policy,
-            "schema": "feepilot.action.v1",
-        }
+        nonce = _digest(creation_nonce, "invalid_creation_nonce")
+        action = _canonical_action(owner, executor_address, scope, payload_hash, policy)
         action_hash = _sha256(_canonical_json(action))
+        budget_id = _budget_id(action, int(gl.message.value), expires, nonce)
+        if self.budgets.get(budget_id, ""):
+            raise Exception("creation_nonce_already_used")
         self.budget_count = u64(int(self.budget_count) + 1)
         sequence = int(self.budget_count)
-        budget_id = "fpb_" + _sha256_parts([action_hash, str(gl.message.value), str(expires), str(sequence)])[:20]
         budget = {
             "schema_version": "feepilot.v1",
             "budget_id": budget_id,
@@ -89,6 +102,7 @@ class FeePilot(gl.Contract):
             "executor": executor_address,
             "canonical_action": action,
             "action_hash": action_hash,
+            "creation_nonce": nonce,
             "policy_url": policy,
             "reserved_gen_wei": str(gl.message.value),
             "expires_at": expires,
@@ -113,9 +127,12 @@ class FeePilot(gl.Contract):
             raise Exception("budget_expired")
         evidence = _https_url(evidence_url, "invalid_evidence_url")
         source_context = {
+            "canonical_action": budget["canonical_action"],
             "action_hash": budget["action_hash"],
             "budget_id": budget["budget_id"],
             "evidence_url": evidence,
+            "executor": budget["executor"],
+            "owner": budget["owner"],
             "policy_url": budget["policy_url"],
             "reserved_gen_wei": budget["reserved_gen_wei"],
         }
@@ -131,7 +148,7 @@ class FeePilot(gl.Contract):
                 independent = _parse_assessment(_canonical_json(_evaluate_budget(source_context)))
             except Exception:
                 return False
-            fields = ["decision", "policy_snapshot_hash", "evidence_snapshot_hash", "bundle_hash", "action_hash", "reason_code"]
+            fields = ["decision", "policy_snapshot_hash", "evidence_snapshot_hash", "bundle_hash", "action_hash", "reason_code", "canonical_action", "executor", "reserved_gen_wei"]
             return all(proposed[field] == independent[field] for field in fields)
 
         assessment = _parse_assessment(gl.vm.run_nondet_unsafe(leader_fn, validator_fn))
@@ -140,6 +157,9 @@ class FeePilot(gl.Contract):
             "authorization_id": authorization_id,
             "budget_id": budget["budget_id"],
             "action_hash": budget["action_hash"],
+            "canonical_action": assessment["canonical_action"],
+            "executor": assessment["executor"],
+            "reserved_gen_wei": assessment["reserved_gen_wei"],
             "decision": assessment["decision"],
             "reason_code": assessment["reason_code"],
             "policy_snapshot_hash": assessment["policy_snapshot_hash"],
@@ -203,11 +223,14 @@ def _evaluate_budget(context: dict) -> dict:
     policy = _render(context["policy_url"])
     evidence = _render(context["evidence_url"])
     policy_hash, evidence_hash = policy["content_hash"], evidence["content_hash"]
-    bundle_hash = _sha256(_canonical_json({"action_hash": context["action_hash"], "policy": policy_hash, "evidence": evidence_hash}))
+    assessed_action = context["canonical_action"]
+    bundle_hash = _sha256(_canonical_json({"action": assessed_action, "executor": context["executor"], "reserved_gen_wei": context["reserved_gen_wei"], "policy": policy_hash, "evidence": evidence_hash}))
+    bindings = {"canonical_action": assessed_action, "executor": context["executor"], "reserved_gen_wei": context["reserved_gen_wei"]}
     if not policy["readable"] or not evidence["readable"]:
-        return {"decision": "inconclusive", "reason_code": "source_unavailable", "policy_snapshot_hash": policy_hash, "evidence_snapshot_hash": evidence_hash, "bundle_hash": bundle_hash, "action_hash": context["action_hash"]}
+        return {"decision": "inconclusive", "reason_code": "source_unavailable", "policy_snapshot_hash": policy_hash, "evidence_snapshot_hash": evidence_hash, "bundle_hash": bundle_hash, "action_hash": context["action_hash"], **bindings}
     prompt = """You are a strict GenLayer fee-budget authorization judge. Use only the two rendered sources. Approve only when the policy clearly permits the exact scope and the evidence supports that execution request. Reject if either source conflicts with the action. Return minified JSON only with decision (approved|denied|inconclusive) and reason_code (approved_by_policy|policy_conflict|insufficient_evidence|unsafe_source)."""
-    raw = json.loads(gl.nondet.exec_prompt(prompt + "\nContext: " + _canonical_json({"action_hash": context["action_hash"], "policy": policy["content"], "evidence": evidence["content"]})))
+    review_context = {"canonical_action": assessed_action, "executor": context["executor"], "reserved_gen_wei": context["reserved_gen_wei"], "policy": policy["content"], "evidence": evidence["content"]}
+    raw = json.loads(gl.nondet.exec_prompt(prompt + "\nCanonical action to assess: " + _canonical_json(review_context)))
     decision = str(raw.get("decision", "inconclusive")).lower()
     reason = str(raw.get("reason_code", "insufficient_evidence")).lower()
     if decision not in ("approved", "denied", "inconclusive"):
@@ -216,7 +239,7 @@ def _evaluate_budget(context: dict) -> dict:
         reason = "insufficient_evidence"
     if decision == "approved" and reason != "approved_by_policy":
         decision, reason = "inconclusive", "insufficient_evidence"
-    return {"decision": decision, "reason_code": reason, "policy_snapshot_hash": policy_hash, "evidence_snapshot_hash": evidence_hash, "bundle_hash": bundle_hash, "action_hash": context["action_hash"]}
+    return {"decision": decision, "reason_code": reason, "policy_snapshot_hash": policy_hash, "evidence_snapshot_hash": evidence_hash, "bundle_hash": bundle_hash, "action_hash": context["action_hash"], **bindings}
 
 
 def _render(url: str) -> dict:
@@ -240,6 +263,18 @@ def _parse_assessment(raw: str) -> dict:
     result = {"decision": decision, "reason_code": reason}
     for key in ("policy_snapshot_hash", "evidence_snapshot_hash", "bundle_hash", "action_hash"):
         result[key] = _digest(str(value.get(key, "")), "invalid_assessment_hash")
+    action = value.get("canonical_action")
+    if not isinstance(action, dict) or _sha256(_canonical_json(action)) != result["action_hash"]:
+        raise Exception("assessment_action_binding_mismatch")
+    executor = str(value.get("executor", "")).lower()
+    if str(action.get("executor", "")).lower() != executor or not executor.startswith("0x"):
+        raise Exception("assessment_executor_binding_mismatch")
+    reserve = str(value.get("reserved_gen_wei", ""))
+    if not reserve.isdigit() or int(reserve) <= 0:
+        raise Exception("assessment_reserve_binding_mismatch")
+    result["canonical_action"] = action
+    result["executor"] = executor
+    result["reserved_gen_wei"] = reserve
     return result
 
 
@@ -273,6 +308,23 @@ def _digest(raw: str, error: str) -> str:
 
 def _canonical_json(value) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _canonical_action(owner: str, executor: str, action_scope: str, action_payload_hash: str, policy_url: str) -> dict:
+    return {
+        "action_payload_hash": _digest(action_payload_hash, "invalid_action_payload_hash"),
+        "action_scope": _clean(action_scope, 180, "action_scope_required"),
+        "executor": str(Address(executor)).lower(),
+        "owner": str(Address(owner)).lower(),
+        "policy_url": _https_url(policy_url, "invalid_policy_url"),
+        "schema": "feepilot.action.v2",
+    }
+
+
+def _budget_id(action: dict, reserved_gen_wei: int, expires_at: int, creation_nonce: str) -> str:
+    if reserved_gen_wei <= 0 or expires_at <= 0:
+        raise Exception("invalid_budget_binding")
+    return "fpb_" + _sha256_parts(["feepilot.budget.v2", _canonical_json(action), str(reserved_gen_wei), str(expires_at), creation_nonce])[:20]
 
 
 def _sha256(value: str) -> str:
