@@ -1,6 +1,6 @@
 # FeePilot for GenLayer
 
-Studio deployment: [`0xb8478C9E03fa0D02D084E23CdE404933ae584ad1`](https://explorer-studio.genlayer.com/address/0xb8478C9E03fa0D02D084E23CdE404933ae584ad1)
+Studio v2 deployment: [`0xe260EACa724a50Ab58939438522393521D992829`](https://explorer-studio.genlayer.com/address/0xe260EACa724a50Ab58939438522393521D992829)
 
 FeePilot is a real, payable execution-budget contract for a named AI-agent executor. A wallet locks GEN, defines a canonical action and expiry, then requests a GenLayer consensus authorization built from independently rendered policy and evidence sources.
 

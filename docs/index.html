@@ -12,7 +12,7 @@
 <body><main class="wrap">
   <header>
     <div><div class="eyebrow">GENLAYER FEE-AWARE EXECUTION</div><h1>FeePilot</h1><p>A wallet-owned GEN reserve for an AI agent. The owner locks the maximum amount, GenLayer validators bind an evidence-backed authorization, and only the named executor can settle it once.</p><div class="fact">The settlement is an on-chain fee-reserve payment to the named executor. It never claims to verify an unrelated external purchase.</div></div>
-    <div class="card"><h2>Live contract</h2><p id="contractState">Set the deployed Bradbury or Studio contract address below, then connect a wallet to use the real contract state.</p><label>Contract address</label><input id="contractAddress" value="0xb8478C9E03fa0D02D084E23CdE404933ae584ad1" placeholder="0x..."><button class="secondary" id="saveContract">Use this contract</button><div class="status" id="networkStatus"></div></div>
+    <div class="card"><h2>Live contract</h2><p id="contractState">Set the deployed Bradbury or Studio contract address below, then connect a wallet to use the real contract state.</p><label>Contract address</label><input id="contractAddress" value="0xe260EACa724a50Ab58939438522393521D992829" placeholder="0x..."><button class="secondary" id="saveContract">Use this contract</button><div class="status" id="networkStatus"></div></div>
   </header>
   <section class="grid">
     <article class="card"><h2>1. Lock a budget</h2><p>The owner defines the only executor, action scope, policy source and expiry. The deposited GEN becomes the maximum one-use reserve.</p><label>Executor wallet</label><input id="executor" placeholder="0x..."><label>Action scope</label><input id="scope" value="agent:approved-execution"><label>Action payload SHA-256</label><input id="payloadHash" placeholder="64 hexadecimal characters"><label>Policy URL</label><input id="policyUrl" placeholder="https://..."><label>Expiry (Unix seconds)</label><input id="expiry" type="number"><label>Reserve (GEN)</label><input id="reserve" type="number" min="0" step="0.000001" placeholder="0.1"><button data-action="create">Connect and lock budget</button><div class="status"></div></article>
@@ -24,7 +24,7 @@
 </main>
 <script>
   const ABI=["function create_budget(address executor,string action_scope,string action_payload_hash,string policy_url,uint64 expires_at,string creation_nonce) payable returns (string)","function preview_budget_id(address owner,address executor,string action_scope,string action_payload_hash,string policy_url,uint64 expires_at,uint256 reserved_gen_wei,string creation_nonce) view returns (string)","function authorize_budget(string budget_id,string evidence_url) returns (string)","function settle_authorized_budget(string budget_id,string authorization_id,string completion_hash)","function cancel_budget(string budget_id)","function get_budget(string budget_id) view returns (string)"];
-  const $=id=>document.getElementById(id); let address=localStorage.feePilotContract||"0xb8478C9E03fa0D02D084E23CdE404933ae584ad1"; $("contractAddress").value=address;
+  const $=id=>document.getElementById(id); let address=localStorage.feePilotContract||"0xe260EACa724a50Ab58939438522393521D992829"; $("contractAddress").value=address;
   const setStatus=(button,text)=>button.parentElement.querySelector(".status").textContent=text;
   function validHash(v){return /^[0-9a-f]{64}$/i.test(v.trim())}
   async function freshNonce(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return [...bytes].map(x=>x.toString(16).padStart(2,"0")).join("")}
