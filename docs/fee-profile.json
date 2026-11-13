@@ -1,0 +1,11 @@
+{
+  "schema": "feepilot.fee-profile.v2",
+  "network": "studionet",
+  "policy": "Each action must obtain a fresh network estimate; no hard-coded gas or EVM receipt is treated as fee finality.",
+  "actions": {
+    "create_budget": { "risk": "payable reserve", "finality": "required" },
+    "authorize_budget": { "risk": "consensus web assessment", "finality": "required" },
+    "settle_authorized_budget": { "risk": "on-chain reserve settlement", "finality": "required" },
+    "cancel_budget": { "risk": "on-chain refund", "finality": "required" }
+  }
+}
