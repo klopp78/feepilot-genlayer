@@ -1,6 +1,6 @@
-import { createClient, isSuccessful } from 'https://esm.sh/genlayer-js@1.1.8?bundle';
-import { studionet } from 'https://esm.sh/genlayer-js@1.1.8/chains?bundle';
-import { TransactionHashVariant } from 'https://esm.sh/genlayer-js@1.1.8/types?bundle';
+import { createClient, isSuccessful } from 'https://esm.sh/genlayer-js@2.0.0-rc.2?bundle';
+import { studionet } from 'https://esm.sh/genlayer-js@2.0.0-rc.2/chains?bundle';
+import { TransactionHashVariant } from 'https://esm.sh/genlayer-js@2.0.0-rc.2/types?bundle';
 
 export class FeePilotAdapter {
   constructor(address, provider, policy) { this.address = address; this.provider = provider; this.policy = policy; this.reader = createClient({ chain: studionet }); }
