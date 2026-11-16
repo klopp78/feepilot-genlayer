@@ -29,7 +29,7 @@ The profile is intentionally a policy and coverage artifact, not hard-coded fee 
 
 FeePilot v3 turns the single-executor reserve into a delegated budget ledger. An owner can assign capped allowances to several named executors, revoke any allowance before it is used, and obtain a separate consensus-bound, one-use receipt for every spend. Settlement checks the exact executor cap, the remaining budget, the canonical request commitment, successful GenLayer consensus, and final state readback before transferring GEN. The owner can reclaim only the unspent balance, so every reserve has a visible accounting trail.
 
-The v3 contract is `contracts/fee_pilot_v3.py`; its focused tests cover nonce-bound budgets, policy binding, allowance overflow, and replay prevention. The live v3 interface is `docs/feepilot-v3.html`.
+The v3 contract is `contracts/fee_pilot_v3.py`; its focused tests cover nonce-bound budgets, policy binding, allowance overflow, and replay prevention. It is deployed on Studio at [`0x0caF2Ba1cdBDb62fA7BB056b17AE67D9284329DF`](https://explorer-studio.genlayer.com/address/0x0caF2Ba1cdBDb62fA7BB056b17AE67D9284329DF). The live v3 interface is `docs/feepilot-v3.html`.
 
 ## Test
 
