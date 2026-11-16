@@ -1,11 +1,17 @@
 {
-  "schema": "feepilot.fee-profile.v2",
+  "schema": "feepilot.fee-profile.v3",
   "network": "studionet",
   "policy": "Each action must obtain a fresh network estimate; no hard-coded gas or EVM receipt is treated as fee finality.",
   "actions": {
     "create_budget": { "risk": "payable reserve", "finality": "required" },
     "authorize_budget": { "risk": "consensus web assessment", "finality": "required" },
     "settle_authorized_budget": { "risk": "on-chain reserve settlement", "finality": "required" },
-    "cancel_budget": { "risk": "on-chain refund", "finality": "required" }
+    "cancel_budget": { "risk": "on-chain refund", "finality": "required" },
+    "create_delegated_budget": { "risk": "payable delegated reserve", "finality": "required" },
+    "grant_executor": { "risk": "executor allowance assignment", "finality": "required" },
+    "revoke_executor": { "risk": "executor authorization revocation", "finality": "required" },
+    "authorize_spend": { "risk": "consensus spend authorization", "finality": "required" },
+    "settle_authorized_spend": { "risk": "on-chain delegated settlement", "finality": "required" },
+    "refund_remaining_budget": { "risk": "remaining reserve refund", "finality": "required" }
   }
 }

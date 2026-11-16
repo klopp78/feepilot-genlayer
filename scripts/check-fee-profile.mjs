@@ -1,8 +1,11 @@
 import fs from 'node:fs';
 const site = fs.readFileSync('docs/index.html', 'utf8');
+const v3Site = fs.readFileSync('docs/feepilot-v3.html', 'utf8');
 const adapter = fs.readFileSync('docs/genlayer-adapter.js', 'utf8');
 const profile = JSON.parse(fs.readFileSync('docs/fee-profile.json', 'utf8'));
 const required = ['FeePilotAdapter', 'fee-profile.json', 'estimateTransactionFeesForWrite', 'writeContract', 'waitForFinalization', 'isSuccessful', 'TransactionHashVariant.LATEST_FINAL', 'Finalized and re-read'];
-const missing = required.filter(value => !(site + adapter).includes(value));
-if (missing.length || /ethers@|new ethers|BrowserProvider/.test(site) || Object.keys(profile.actions).length !== 4) throw Error(`FeePilot v2 fee/finality controls missing: ${missing.join(', ')}`);
-console.log('FeePilot v2 fee-profile and consensus-finality checks passed.');
+const missing = required.filter(value => !(site + v3Site + adapter).includes(value));
+const v3Actions = ['create_delegated_budget', 'grant_executor', 'revoke_executor', 'authorize_spend', 'settle_authorized_spend', 'refund_remaining_budget'];
+const missingActions = v3Actions.filter(action => !profile.actions[action]);
+if (missing.length || missingActions.length || /ethers@|new ethers|BrowserProvider/.test(site + v3Site)) throw Error(`FeePilot fee/finality controls missing: ${[...missing, ...missingActions].join(', ')}`);
+console.log('FeePilot v2/v3 fee-profile and consensus-finality checks passed.');

@@ -25,6 +25,12 @@ FeePilot v2 adds a fee-aware browser execution layer rather than merely restylin
 
 The profile is intentionally a policy and coverage artifact, not hard-coded fee math: Studio/network estimates are refreshed per transaction because consensus and web-assessment paths can vary.
 
+## FeePilot v3 milestone
+
+FeePilot v3 turns the single-executor reserve into a delegated budget ledger. An owner can assign capped allowances to several named executors, revoke any allowance before it is used, and obtain a separate consensus-bound, one-use receipt for every spend. Settlement checks the exact executor cap, the remaining budget, the canonical request commitment, successful GenLayer consensus, and final state readback before transferring GEN. The owner can reclaim only the unspent balance, so every reserve has a visible accounting trail.
+
+The v3 contract is `contracts/fee_pilot_v3.py`; its focused tests cover nonce-bound budgets, policy binding, allowance overflow, and replay prevention. The live v3 interface is `docs/feepilot-v3.html`.
+
 ## Test
 
 Run `npm test` to check the lifecycle controls, concurrent-create bindings, and v2 fee-profile/finality integration. For a live test, deploy `contracts/fee_pilot.py` in Studio or Bradbury, create a small budget, then use the pre-read nonce-derived ID to read the exact persisted record after finality.
